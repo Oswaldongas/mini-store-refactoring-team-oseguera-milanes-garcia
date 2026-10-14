@@ -174,3 +174,70 @@ def test_shipping_update_rejects_unsupported_channel():
     sms.send.assert_not_called()
     push.send.assert_not_called()
 
+
+# AI-assisted tests: protect channel-specific data access
+@pytest.mark.parametrize(
+    ("notification_type", "channel", "customer_fields"),
+    [
+        (
+            "confirmation",
+            "email",
+            {"name": "Ana", "email": "ana@example.com"},
+        ),
+        (
+            "confirmation",
+            "sms",
+            {"name": "Ana", "phone": "+521234567890"},
+        ),
+        (
+            "confirmation",
+            "push",
+            {"device_id": "device-1"},
+        ),
+        (
+            "shipping",
+            "email",
+            {"name": "Ana", "email": "ana@example.com"},
+        ),
+        (
+            "shipping",
+            "sms",
+            {"phone": "+521234567890"},
+        ),
+        (
+            "shipping",
+            "push",
+            {"device_id": "device-1"},
+        ),
+    ],
+)
+def test_notification_uses_only_selected_channel_fields(
+    notification_type, channel, customer_fields
+):
+    customer = SimpleNamespace(
+        preferred_channel=channel,
+        **customer_fields
+    )
+
+    service, email, sms, push = make_service()
+
+    if notification_type == "confirmation":
+        service.send_order_confirmation(customer, "A-100")
+    else:
+        service.send_shipping_update(
+            customer, "A-100", "TRACK-9"
+        )
+
+    senders = {
+        "email": email,
+        "sms": sms,
+        "push": push,
+    }
+
+    senders[channel].send.assert_called_once()
+
+    for other_channel, sender in senders.items():
+        if other_channel != channel:
+            sender.send.assert_not_called()
+
+
