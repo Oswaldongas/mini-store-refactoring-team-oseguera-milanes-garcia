@@ -1,3 +1,4 @@
+
 """Customer notification behavior."""
 
 
@@ -7,35 +8,63 @@ class NotificationService:
         self.sms_sender = sms_sender
         self.push_sender = push_sender
 
-    def send_order_confirmation(self, customer, order_id: str) -> None:
-        if customer.preferred_channel == "email":
-            subject = f"Order {order_id} confirmed"
-            message = f"Hello {customer.name}, your order {order_id} was confirmed."
+    # Shared notification dispatcher
+    def _send_notification(self, customer, payload_builders) -> None:
+        """Route a notification through the preferred channel."""
+        channel = customer.preferred_channel
+
+        if channel == "email":
+            subject, message = payload_builders["email"]()
             self.email_sender.send(customer.email, subject, message)
-        elif customer.preferred_channel == "sms":
-            message = f"Order {order_id} confirmed for {customer.name}."
+
+        elif channel == "sms":
+            (message,) = payload_builders["sms"]()
             self.sms_sender.send(customer.phone, message)
-        elif customer.preferred_channel == "push":
-            title = "Order confirmed"
-            message = f"Order {order_id} is confirmed."
+
+        elif channel == "push":
+            title, message = payload_builders["push"]()
             self.push_sender.send(customer.device_id, title, message)
+
         else:
             raise ValueError("Unsupported notification channel")
 
+    # Order confirmation uses the shared dispatcher
+    def send_order_confirmation(self, customer, order_id: str) -> None:
+        self._send_notification(
+            customer,
+            {
+                "email": lambda: (
+                    f"Order {order_id} confirmed",
+                    f"Hello {customer.name}, your order {order_id} was confirmed.",
+                ),
+                "sms": lambda: (
+                    f"Order {order_id} confirmed for {customer.name}.",
+                ),
+                "push": lambda: (
+                    "Order confirmed",
+                    f"Order {order_id} is confirmed.",
+                ),
+            },
+        )
+
+    # Shipping update now uses the same dispatcher
     def send_shipping_update(self, customer, order_id: str, tracking_code: str) -> None:
-        if customer.preferred_channel == "email":
-            subject = f"Order {order_id} shipped"
-            message = (
-                f"Hello {customer.name}, your order {order_id} shipped. "
-                f"Tracking: {tracking_code}."
-            )
-            self.email_sender.send(customer.email, subject, message)
-        elif customer.preferred_channel == "sms":
-            message = f"Order {order_id} shipped. Tracking: {tracking_code}."
-            self.sms_sender.send(customer.phone, message)
-        elif customer.preferred_channel == "push":
-            title = "Order shipped"
-            message = f"Track order {order_id}: {tracking_code}."
-            self.push_sender.send(customer.device_id, title, message)
-        else:
-            raise ValueError("Unsupported notification channel")
+        self._send_notification(
+            customer,
+            {
+                "email": lambda: (
+                    f"Order {order_id} shipped",
+                    (
+                        f"Hello {customer.name}, your order {order_id} shipped. "
+                        f"Tracking: {tracking_code}."
+                    ),
+                ),
+                "sms": lambda: (
+                    f"Order {order_id} shipped. Tracking: {tracking_code}.",
+                ),
+                "push": lambda: (
+                    "Order shipped",
+                    f"Track order {order_id}: {tracking_code}.",
+                ),
+            },
+        )
