@@ -1,7 +1,6 @@
 
 """Customer notification behavior."""
 
-
 class NotificationService:
     def __init__(self, email_sender, sms_sender, push_sender):
         self.email_sender = email_sender
@@ -10,7 +9,13 @@ class NotificationService:
 
     # Shared notification dispatcher
     def _send_notification(self, customer, payload_builders) -> None:
-        """Route a notification through the preferred channel."""
+        """Route a notification through the preferred channel.
+
+        ``payload_builders`` maps channel names to zero-argument callables.
+        Email and push builders return (subject_or_title, message), while
+        SMS builders return (message,). Only the selected builder is called.
+        Unknown channels raise ValueError without sending a notification.
+        """
         channel = customer.preferred_channel
 
         if channel == "email":
@@ -47,8 +52,10 @@ class NotificationService:
             },
         )
 
-    # Shipping update now uses the same dispatcher
-    def send_shipping_update(self, customer, order_id: str, tracking_code: str) -> None:
+    # Shipping update uses the same dispatcher
+    def send_shipping_update(
+        self, customer, order_id: str, tracking_code: str
+    ) -> None:
         self._send_notification(
             customer,
             {
