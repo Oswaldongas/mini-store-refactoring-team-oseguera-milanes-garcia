@@ -60,9 +60,8 @@ def calculate_order_total(
     """Return the final order total after discounts, tax, and shipping."""
     discount = _calculate_discount(subtotal, customer_type, coupon_code)
     
-    discounted_subtotal = subtotal - discount
-    if discounted_subtotal < 0:
-        discounted_subtotal = 0
+    # Refactorización: uso de max() para evitar que el subtotal sea negativo
+    discounted_subtotal = max(0.0, subtotal - discount)
         
     tax = _calculate_tax(discounted_subtotal, country)
     shipping = _calculate_shipping(discounted_subtotal, country)
