@@ -18,14 +18,15 @@ SHIPPING_INTL_THRESHOLD = 2000
 SHIPPING_INTL_REDUCED = 199.0
 SHIPPING_INTL_STANDARD = 299.0
 
+CUSTOMER_DISCOUNT_RATES = {
+    "premium": DISCOUNT_RATE_PREMIUM,
+    "employee": DISCOUNT_RATE_EMPLOYEE,
+}
+
 def _calculate_discount(subtotal: float, customer_type: str, coupon_code: str | None) -> float:
     """Calculate the total discount amount based on customer type and coupons."""
-    discount = 0.0
-
-    if customer_type == "premium":
-        discount = subtotal * DISCOUNT_RATE_PREMIUM
-    elif customer_type == "employee":
-        discount = subtotal * DISCOUNT_RATE_EMPLOYEE
+    # Calculamos el descuento base del cliente usando el diccionario
+    discount = subtotal * CUSTOMER_DISCOUNT_RATES.get(customer_type, 0.0)
 
     if coupon_code == "SAVE5":
         discount += subtotal * COUPON_SAVE5_RATE
